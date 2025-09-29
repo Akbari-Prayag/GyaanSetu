@@ -1,4 +1,5 @@
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 import HomePage from "./pages/HomePage";
 import SignUpPage from "./pages/SignUpPage";
@@ -10,6 +11,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
 import { useEffect } from "react";
+import toast from "react-hot-toast";
 
 import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
@@ -23,6 +25,18 @@ const App = () => {
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Show generated password when redirected from Google OAuth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pw = params.get("pw");
+    if (pw) {
+      toast.success(`Your password is: ${pw}`);
+      params.delete("pw");
+      const url = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState({}, "", url);
+    }
+  }, []);
 
   console.log({ authUser });
 
@@ -45,6 +59,7 @@ const App = () => {
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
       </Routes>
 
+      <Footer />
       <Toaster />
     </div>
   );

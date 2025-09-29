@@ -1,18 +1,33 @@
 const AuthImagePattern = ({ title, subtitle }) => {
   return (
-    <div className="hidden lg:flex items-center justify-center bg-base-200 p-12">
-      <div className="max-w-md text-center">
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          {[...Array(9)].map((_, i) => (
-            <div
-              key={i}
-              className={`aspect-square rounded-2xl bg-primary/10 ${
-                i % 2 === 0 ? "animate-pulse" : ""
-              }`}
-            />
+    <div className="relative overflow-hidden hidden lg:flex items-center justify-center bg-base-200 p-12">
+      {/* Animated gradient blobs background */}
+      <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-primary/15 blur-2xl animate-float-slow" />
+      <div className="absolute -bottom-12 -right-8 w-56 h-56 rounded-full bg-secondary/15 blur-2xl animate-float-slow animation-delay-2000" />
+      <div className="absolute top-1/3 -right-16 w-40 h-40 rounded-full bg-accent/15 blur-2xl animate-float-slow animation-delay-4000" />
+
+      <div className="relative max-w-md text-center space-y-6">
+        <img src="/Gyaansetulogo.png" alt="GyãnSetu logo" className="w-24 h-24 mx-auto rounded-xl shadow animate-bounce" />
+
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { t: "Fast", a: "" },
+            { t: "Secure", a: "" },
+            { t: "Realtime", a: "" },
+            { t: "Chats", a: "" },
+            { t: "Media", a: "" },
+            { t: "Sync", a: "" },
+            { t: "Themes", a: "" },
+            { t: "Online", a: "" },
+            { t: "Friends", a: "" },
+          ].map((box, i) => (
+            <div key={i} className={`aspect-square rounded-2xl bg-primary/10 flex items-center justify-center transition-all hover:scale-[1.03] hover:bg-primary/15 ${box.a}`}>
+              <span className="text-xs text-primary/80 font-medium select-none">{box.t}</span>
+            </div>
           ))}
         </div>
-        <h2 className="text-2xl font-bold mb-4">{title}</h2>
+
+        <h2 className="text-2xl font-bold">{title}</h2>
         <p className="text-base-content/60">{subtitle}</p>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
+import { OAuth2Client } from "google-auth-library";
 
 export const signup = async (req, res) => {
   const { fullName, email, password } = req.body;
@@ -114,5 +115,77 @@ export const checkAuth = (req, res) => {
   } catch (error) {
     console.log("Error in checkAuth controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// GOOGLE OAUTH (server-side redirect flow)
+const getOAuthClient = () => {
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || "http://localhost:5001/api/auth/google/callback";
+  return new OAuth2Client({
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri,
+  });
+};
+
+export const googleOAuthStart = (req, res) => {
+  try {
+    const client = getOAuthClient();
+    const url = client.generateAuthUrl({
+      access_type: "offline",
+      scope: ["openid", "email", "profile"],
+      prompt: "consent",
+    });
+    return res.redirect(url);
+  } catch (error) {
+    console.log("Error in googleOAuthStart", error.message);
+    res.status(500).json({ message: "Failed to start Google OAuth" });
+  }
+};
+
+export const googleOAuthCallback = async (req, res) => {
+  try {
+    const code = req.query.code;
+    if (!code) return res.status(400).send("Missing code");
+
+    const client = getOAuthClient();
+    const { tokens } = await client.getToken(code);
+    const idToken = tokens.id_token;
+    if (!idToken) return res.status(400).send("Missing id_token from Google");
+
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
+      payload = ticket.getPayload();
+    } catch (e) {
+      return res.status(400).send("Invalid id_token");
+    }
+
+    const email = payload?.email;
+    const fullName = payload?.name || "User";
+    const picture = payload?.picture || "";
+    if (!email) return res.status(400).send("Google email missing");
+
+    let user = await User.findOne({ email });
+    let generatedPasswordPlain = null;
+    if (!user) {
+      const firstName = (fullName || "User").split(" ")[0];
+      const capitalizedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+      generatedPasswordPlain = `${capitalizedFirstName}@0000`;
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(generatedPasswordPlain, salt);
+      user = new User({ fullName, email, password: hashedPassword, profilePic: picture });
+      await user.save();
+    }
+
+    generateToken(user._id, res);
+
+    const frontendBase = process.env.FRONTEND_URL || "http://localhost:5173";
+    const redirectUrl = new URL(frontendBase);
+    if (generatedPasswordPlain) redirectUrl.searchParams.set("pw", generatedPasswordPlain);
+    return res.redirect(redirectUrl.toString());
+  } catch (error) {
+    console.log("Error in googleOAuthCallback", error.message);
+    res.status(500).send("Google OAuth callback failed");
   }
 };
